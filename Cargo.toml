@@ -1,0 +1,19 @@
+[package]
+name = "flux-core"
+version = "0.1.0"
+edition = "2021"
+description = "FLUX bytecode runtime — Fluid Language Universal eXecution"
+license = "MIT"
+authors = ["SuperInstance (DiGennaro et al.)"]
+repository = "https://github.com/SuperInstance/flux-core"
+keywords = ["vm", "bytecode", "agent", "flux", "a2a"]
+categories = ["virtualization", "embedded", "parser-implementations"]
+
+[dependencies]
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "vm_benchmark"
+harness = false
