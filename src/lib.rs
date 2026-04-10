@@ -23,5 +23,6 @@ pub mod vm;
 pub mod bytecode;
 pub mod a2a;
 pub mod error;
+pub mod vocabulary;
 
 pub use error::FluxError;

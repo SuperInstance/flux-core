@@ -10,6 +10,7 @@ keywords = ["vm", "bytecode", "agent", "flux", "a2a"]
 categories = ["virtualization", "embedded", "parser-implementations"]
 
 [dependencies]
+regex = "1"
 
 [dev-dependencies]
 criterion = "0.5"
