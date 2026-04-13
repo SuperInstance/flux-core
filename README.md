@@ -1,5 +1,10 @@
 # flux-core
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
+
 [![crates.io](https://img.shields.io/crates/v/flux-core.svg)](https://crates.io/crates/flux-core)
 
 **FLUX Runtime** — Fluid Language Universal eXecution. A zero-dependency Rust crate implementing the FLUX bytecode virtual machine, assembler, disassembler, and A2A agent protocol.
