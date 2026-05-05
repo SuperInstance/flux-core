@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![crates.io](https://img.shields.io/crates/v/flux-core.svg)](https://crates.io/crates/flux-core)
 
-**FLUX Runtime** — Fluid Language Universal eXecution. A zero-dependency Rust crate implementing the FLUX bytecode virtual machine, assembler, disassembler, and A2A agent protocol.
+**FLUX Runtime** — Fluid Language Universal eXecution. A pure Rust crate implementing the FLUX bytecode virtual machine, assembler, disassembler, and A2A agent protocol. One dependency: `regex`.
 
 ## Quick Start
 
@@ -58,7 +58,7 @@ let decoded = A2AMessage::from_bytes(&bytes).unwrap();
 
 ## Features
 
-- **Zero dependencies** — pure safe Rust
+- **One dependency** — `regex` crate only, pure safe Rust
 - **VM Interpreter** — 30+ opcodes, 16 GP + 16 FP registers
 - **Assembler** — text to bytecode with label resolution
 - **Disassembler** — bytecode to human-readable text
