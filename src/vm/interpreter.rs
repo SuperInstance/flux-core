@@ -11,7 +11,7 @@ pub struct Interpreter<'a> {
     pub halted: bool,
     pub cycle_count: u64,
     max_cycles: u64,
-    stack: Vec<i32>,
+    pub stack: Vec<i32>,
 }
 
 impl<'a> Interpreter<'a> {
