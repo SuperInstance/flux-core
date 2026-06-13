@@ -1,109 +1,143 @@
-# flux-core
+# flux-core: FLUX Bytecode Runtime — Fluid Language Universal eXecution
 
-*The FLUX bytecode runtime — Fluid Language Universal eXecution. A zero-dependency Rust VM, assembler, and A2A agent protocol. The beating heart of the five-layer architecture.*
+A zero-dependency Rust implementation of a register-based virtual machine, bytecode assembler/disassembler, natural-language vocabulary layer, and agent-to-agent (A2A) communication protocol. FLUX is designed as the execution substrate for AI agent swarms: agents define behavior as bytecode, communicate via typed messages, and coordinate through consensus.
 
-## Why This Exists
+## Why It Matters
 
-The five-layer stack (open-parallel → pincher → flux-core → cuda-oxide → cudaclaw) needs a portable intermediate representation. FLUX is it. Instead of compiling agent logic directly to GPU kernels, we compile to FLUX bytecode — a compact, deterministic, cross-platform format that can be interpreted on CPU, JIT-compiled to GPU, or serialized for network transfer.
+Most agent frameworks interpret high-level language directly. FLUX takes a different approach: it compiles natural-language intents into **bytecode**, executes them on a deterministic VM, and lets agents share results through a structured A2A protocol. This gives you:
 
-FLUX isn't trying to be WebAssembly. It's designed for one specific use case: agent coordination logic that needs to run everywhere from an ESP32 (279 bytes of ternary lookup) to an RTX 4050 (20 SMs of parallel ternary matmul).
+- **Determinism**: Same bytecode always produces the same result
+- **Auditability**: Disassemble any agent's program to inspect behavior
+- **Sandboxing**: Cycle budgets prevent runaway execution
+- **Swarm coordination**: Built-in majority voting and message passing
 
-## Architecture
+## How It Works
+
+### Register File
+
+The VM uses 16 general-purpose registers (R0–R15) and 16 floating-point registers, plus PC (program counter), SP (stack pointer), and zero/sign flags:
 
 ```
-Agent Logic (Rust/Python/any)
-         ↓ flux-core assembler
-FLUX Bytecode (compact binary)
-         ↓
-    ┌────┴────┐
-    │         │
-Interpreter   JIT → PTX → GPU
-(CPU debug)   (cuda-oxide)
-    │         │
-    └────┬────┘
-         ↓
-    A2A Messages (agent-to-agent)
+RegisterFile {
+    gp: [i32; 16],   // general purpose
+    fp: [f64; 16],   // floating point
+    pc: u32,         // program counter
+    sp: u32,         // stack pointer
+    flag_zero: bool,
+    flag_sign: bool,
+}
 ```
 
-### Modules
+### Instruction Set
 
-- **`vm/`** — Register-based virtual machine with 16 GP + 16 FP registers
-  - `Interpreter` — Execute bytecode with cycle limits and debug hooks
-  - `RegisterFile` — 16 integer + 16 float registers, zero-cost abstraction
-- **`bytecode/`** — Assembly and disassembly
-  - `Op` — 40+ opcodes (MOVI, ADD, MUL, CMP, JMP, CALL, RET, HALT, etc.)
-  - `Assembler` — Human-readable assembly → bytecode
-  - `Disassembler` — Bytecode → human-readable with offsets
-- **`a2a/`** — Agent-to-agent communication protocol
-  - `A2AMessage` — Tell/Ask/Offer/Ack/Fail message types
-  - `Agent` — Named agent with mailbox and capability tracking
-  - `Swarm` — Manage N agents with message routing
-- **`vocabulary/`** — Standard library of FLUX words
-- **`error`** — Unified error type
+The ISA uses single-byte opcodes (0x00–0x81) with 1–4 byte instructions:
 
-## Usage
+| Category | Opcodes | Examples |
+|----------|---------|---------|
+| Arithmetic | 0x08–0x0F | `IADD`, `ISUB`, `IMUL`, `IDIV`, `IMOD`, `INEG`, `INC`, `DEC` |
+| Logic | 0x10–0x15 | `IAND`, `IOR`, `IXOR`, `INOT`, `ISHL`, `ISHR` |
+| Control Flow | 0x04–0x07 | `JMP`, `JZ`, `JNZ`, `CALL` |
+| Stack | 0x20–0x22, 0x28 | `PUSH`, `POP`, `DUP`, `RET` |
+| Memory | 0x01, 0x2B | `MOV`, `MOVI` (immediate) |
+| Comparison | 0x2D | `CMP` (sets zero/sign flags) |
+| A2A | 0x60–0x66 | `TELL`, `ASK`, `DELEGATE`, `BROADCAST` |
+| System | 0x80, 0x81 | `HALT`, `YIELD` |
 
-### Interpreting Bytecode
+### Assembler (Two-Pass with Label Resolution)
 
-```rust
-use flux_core::vm::Interpreter;
-use flux_core::bytecode::opcodes::Op;
+Pass 1 computes instruction sizes and records label positions. Pass 2 emits bytecode. Jump fixups are applied after all labels are known:
 
-// Compute 6 * 7 = 42
-let bytecode = vec![
-    Op::MOVI as u8, 0, 6, 0,  // R0 = 6
-    Op::MOVI as u8, 1, 7, 0,  // R1 = 7
-    Op::MUL  as u8, 0, 1, 0,  // R0 = R0 * R1
-    Op::HALT as u8,
-];
-
-let mut vm = Interpreter::new(&bytecode);
-vm.execute();
-assert_eq!(vm.read_gp(0), 42);
+```
+loop:
+    CMP R1, 0
+    JZ R1, end       ; fixup: resolve 'end' after Pass 1
+    IMUL R0, R1
+    DEC R1
+    JMP loop         ; fixup: resolve 'loop'
+end:
+    HALT
 ```
 
-### Assembling from Text
+**Complexity**: O(n) time, O(n) space where n = source lines.
+
+### Interpreter (Fetch-Decode-Execute)
+
+Each cycle: fetch opcode byte → decode → execute. A cycle budget (default 10M) prevents infinite loops:
+
+```
+while !halted && cycle_count < max_cycles:
+    op = fetch()
+    cycle_count += 1
+    match op { ... }
+```
+
+**Complexity**: O(1) per instruction, O(n) total where n = bytecode length (excluding loops).
+
+### A2A Protocol
+
+Messages carry sender/receiver UUIDs (16 bytes each), a conversation ID, type tag, payload, and a trust score [0, 1]. Wire format is 51+ bytes:
+
+```
+| sender 16B | receiver 16B | conv_id 16B | type 1B | len 2B | payload ... | trust 4B |
+```
+
+### Swarm Consensus
+
+The `Swarm` runs all agents for one step, then takes a majority vote on a register value:
+
+```
+consensus(reg) = argmax_{v} |{agent : agent.result(reg) = v}|
+```
+
+**Complexity**: O(N) for N agents per tick, O(N) for vote counting.
+
+## Quick Start
 
 ```rust
 use flux_core::bytecode::assembler::Assembler;
+use flux_core::vm::Interpreter;
 
-let mut asm = Assembler::new();
-asm.label("start");
-asm.emit_mov_i(0, 42);  // MOVI R0, 42
-asm.emit_halt();
+// Write assembly
+let bytecode = Assembler::assemble("MOVI R0, 42\nHALT").unwrap();
 
-let bytecode = asm.assemble().unwrap();
+// Execute
+let mut vm = Interpreter::new(&bytecode);
+vm.execute().unwrap();
+assert_eq!(vm.read_gp(0), 42);
 ```
 
-### A2A Agent Protocol
+### Natural Language → Bytecode
 
 ```rust
-use flux_core::a2a::{Agent, Swarm, A2AMessage, MessageType};
+use flux_core::vocabulary::Interpreter;
 
-let mut swarm = Swarm::new();
-swarm.register(Agent::new("alice"));
-swarm.register(Agent::new("bob"));
-
-// Alice tells Bob something
-let msg = A2AMessage::tell("alice", "bob", b"ready");
-swarm.route(&msg);
+let interp = Interpreter::with_builtins();
+assert_eq!(interp.execute("compute 6 * 7").unwrap(), 42);
+assert_eq!(interp.execute("factorial of 5").unwrap(), 120);
 ```
 
-## The Deeper Idea
+## API
 
-FLUX is the Rosetta Stone of the SuperInstance architecture. Every layer speaks it:
-- **pincher** compiles .nail files to FLUX bytecode
-- **flux-core** interprets or JIT-compiles that bytecode
-- **cuda-oxide** lowers FLUX to PTX for GPU execution
-- **cudaclaw** wraps the GPU execution in a safe Rust API
+| Module | Key Types | Purpose |
+|--------|-----------|---------|
+| `vm` | `Interpreter`, `RegisterFile` | Bytecode execution |
+| `bytecode` | `Op`, `Assembler`, `Disassembler` | Encode/decode instructions |
+| `vocabulary` | `VocabEntry`, `Vocabulary`, `Interpreter` | NL pattern → assembly |
+| `a2a` | `A2AMessage`, `Agent`, `Swarm` | Agent protocol |
+| `error` | `FluxError` | All error variants |
 
-The bytecode format is designed so that every instruction fits in 4 bytes or less. This means FLUX bytecode is cache-friendly, network-efficient, and deterministic across platforms. The same bytecode that runs on your laptop will produce the same result on a GPU cluster.
+## Architecture Notes
 
-## Related Crates
+FLUX embodies the **γ + η = C** principle. The VM and bytecode ISA are the **γ (gamma)** — fixed, deterministic, mathematical. The vocabulary layer and A2A swarm are the **η (eta)** — the orchestration and coordination layer that adapts at runtime. Together they form **C** — a complete agent execution system where behavior is auditable (γ) and coordination is flexible (η).
 
-- `pincher` — Compiles .nail files to FLUX bytecode
-- `pincher-flux-bridge` — Bidirectional bridge between .nail format and FLUX IR
-- `cuda-oxide` — FLUX → PTX lowering for GPU
-- `cudaclaw` — Safe GPU execution API
-- `flux-vm-dispatch` — Async dispatch for FLUX VMs
-- `flux-autoscale` — Auto-scale FLUX execution across resources
+The design mirrors real CPU architectures: the register file and fetch-execute loop would be familiar to anyone who has implemented a CHIP-8 or RISC-V emulator, but extended with agent-specific opcodes (`TELL`, `ASK`, `DELEGATE`, `BROADCAST`).
+
+## References
+
+- Tanenbaum, A. S. & Austin, T. (2013). *Structured Computer Organization* (6th ed.). Pearson.
+- Smith, J. E. & Sohi, G. S. (1998). *The Microarchitecture of Superscalar Processors*. Proc. IEEE 83(12).
+- Hewitt, C. (1977). *Viewing Control Structures as Patterns of Passing Messages*. AI Memo 410, MIT.
+
+## License
+
+MIT
