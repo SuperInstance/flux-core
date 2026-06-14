@@ -15,6 +15,7 @@ pub enum Op {
     CMP = 0x2D,
     FADD = 0x40, FSUB = 0x41, FMUL = 0x42, FDIV = 0x43,
     TELL = 0x60, ASK = 0x61, DELEGATE = 0x62, BROADCAST = 0x66,
+    TMAT = 0xA0, TATTRACT = 0xA1, TPACK = 0xA2, TUNPACK = 0xA3,
     HALT = 0x80, YIELD = 0x81,
 }
 
@@ -40,6 +41,7 @@ impl Op {
             0x42 => Some(Self::FMUL), 0x43 => Some(Self::FDIV),
             0x60 => Some(Self::TELL), 0x61 => Some(Self::ASK),
             0x62 => Some(Self::DELEGATE), 0x66 => Some(Self::BROADCAST),
+            0xA0 => Some(Self::TMAT), 0xA1 => Some(Self::TATTRACT), 0xA2 => Some(Self::TPACK), 0xA3 => Some(Self::TUNPACK),
             0x80 => Some(Self::HALT), 0x81 => Some(Self::YIELD),
             _ => None,
         }

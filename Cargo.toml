@@ -11,6 +11,10 @@ categories = ["virtualization", "embedded", "parser-implementations"]
 
 [dependencies]
 regex = "1"
+neon-kernel = { path = "../the-rotation/crates/neon-kernel", optional = true }
+
+[features]
+tensor = ["neon-kernel"]
 
 [dev-dependencies]
 criterion = "0.5"

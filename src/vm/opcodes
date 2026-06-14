@@ -1,0 +1,5 @@
+// Tensor opcodes (0xA0-0xAF)
+TMAT = 0xA0,   // Ternary matmul: R0[16] = R1[16] × R2[16]
+TATTRACT = 0xA1, // Attractor step: f32[64] → i8[64] with threshold
+TPACK = 0xA2,   // Pack i8[64] → u128
+TUNPACK = 0xA3, // Unpack u128 → i8[64]
