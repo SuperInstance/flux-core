@@ -83,7 +83,7 @@ impl Assembler {
             "CMP" | "MOV" | "LOAD" | "STORE" => 3,
             "MOVI" | "JMP" | "JZ" | "JNZ" | "CALL" => 4,
             "IADD" | "ISUB" | "IMUL" | "IDIV" | "IMOD" |
-            "IAND" | "IOR" | "IXOR" | "ISHL" | "ISHR" => 3,
+            "IAND" | "IOR" | "IXOR" | "ISHL" | "ISHR" => 4,
             _ => 4,
         }
     }
@@ -115,6 +115,13 @@ impl Assembler {
                 self.output.push(opc as u8);
                 self.output.push(parse_reg(parts[1]));
                 self.output.push(parse_reg(parts[2]));
+                // Support both 2-operand (rd, rs) and 3-operand (rd, rs1, rs2)
+                if parts.len() > 3 {
+                    self.output.push(parse_reg(parts[3]));
+                } else {
+                    // 2-operand shorthand: rd = rd OP rs2
+                    self.output.push(parse_reg(parts[1]));
+                }
             }
             "CMP" => {
                 self.output.push(Op::CMP as u8);

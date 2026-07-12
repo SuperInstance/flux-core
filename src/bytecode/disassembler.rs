@@ -41,9 +41,9 @@ impl Disassembler {
                 }
                 Op::IADD | Op::ISUB | Op::IMUL | Op::IDIV | Op::IMOD |
                 Op::IAND | Op::IOR | Op::IXOR | Op::ISHL | Op::ISHR => {
-                    if pc + 1 < bytecode.len() {
-                        let d = bytecode[pc]; let s = bytecode[pc+1]; pc += 2;
-                        (format!("{} R{}, R{}", opcode, d, s), 3)
+                    if pc + 2 < bytecode.len() {
+                        let d = bytecode[pc]; let s1 = bytecode[pc+1]; let s2 = bytecode[pc+2]; pc += 3;
+                        (format!("{} R{}, R{}, R{}", opcode, d, s1, s2), 4)
                     } else { (format!("{} (truncated)", opcode), 1) }
                 }
                 Op::CMP | Op::MOV => {

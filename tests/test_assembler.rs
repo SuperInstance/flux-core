@@ -1,5 +1,5 @@
-use flux_core::bytecode::assembler::Assembler;
-use flux_core::vm::Interpreter;
+use fluxvm::bytecode::assembler::Assembler;
+use fluxvm::vm::Interpreter;
 
 #[test]
 fn test_assemble_movi_halt() {
@@ -12,6 +12,16 @@ fn test_assemble_movi_halt() {
 
 #[test]
 fn test_assemble_addition() {
+    let source = "MOVI R0, 10\nMOVI R1, 20\nIADD R2, R0, R1\nHALT";
+    let bc = Assembler::assemble(source).unwrap();
+    let mut vm = Interpreter::new(&bc);
+    vm.execute().unwrap();
+    assert_eq!(vm.read_gp(2), 30);
+}
+
+#[test]
+fn test_assemble_addition_2op() {
+    // 2-operand shorthand: IADD R0, R1 means R0 = R0 + R1
     let source = "MOVI R0, 10\nMOVI R1, 20\nIADD R0, R1\nHALT";
     let bc = Assembler::assemble(source).unwrap();
     let mut vm = Interpreter::new(&bc);
@@ -25,7 +35,7 @@ fn test_assemble_loop() {
 MOVI R0, 0
 MOVI R1, 10
 loop:
-IADD R0, R1
+IADD R0, R0, R1
 DEC R1
 JNZ R1, loop
 HALT
@@ -42,7 +52,7 @@ fn test_assemble_factorial() {
 MOVI R3, 5
 MOVI R4, 1
 loop:
-IMUL R4, R3
+IMUL R4, R4, R3
 DEC R3
 JNZ R3, loop
 HALT

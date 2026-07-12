@@ -1,4 +1,4 @@
-use flux_core::a2a::{A2AMessage, MessageType};
+use fluxvm::a2a::{A2AMessage, MessageType};
 
 #[test]
 fn test_a2a_roundtrip() {

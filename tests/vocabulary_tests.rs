@@ -1,4 +1,4 @@
-use flux_core::vocabulary::{VocabEntry, Vocabulary, Interpreter};
+use fluxvm::vocabulary::{VocabEntry, Vocabulary, Interpreter};
 
 #[test]
 fn test_vocab_entry_basic() {

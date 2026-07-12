@@ -68,32 +68,44 @@ impl<'a> Interpreter<'a> {
             let op_byte = self.read_u8();
             self.cycle_count += 1;
 
-            // SAFETY: We cast u8 to Op via FromPrimitive-style match
             match op_byte {
                 0x00 => {} // NOP
-                0x01 => { let d = self.read_u8(); let s = self.read_u8(); self.regs.write_gp(d, self.regs.read_gp(s)); } // MOV
+                0x01 => { let d = self.read_u8(); let s = self.read_u8(); self.regs.write_gp(d, self.regs.read_gp(s)); } // MOV rd, rs
+                0x02 => { let d = self.read_u8(); let s = self.read_u8(); /* LOAD rd, rs (addr) */ let addr = self.regs.read_gp(s) as usize; /* simplified: no memory regions in Rust yet */ self.regs.write_gp(d, 0); } // LOAD
+                0x03 => { let d = self.read_u8(); let s = self.read_u8(); /* STORE rd (val), rs (addr) */ let _addr = self.regs.read_gp(s) as usize; /* no-op in simplified Rust VM */ } // STORE
                 0x04 => { let _r = self.read_u8(); let off = self.read_i16(); self.regs.pc = (self.regs.pc as i64 + off as i64) as u32; } // JMP
                 0x05 => { let r = self.read_u8(); let off = self.read_i16(); if self.regs.read_gp(r) == 0 { self.regs.pc = (self.regs.pc as i64 + off as i64) as u32; } } // JZ
                 0x06 => { let r = self.read_u8(); let off = self.read_i16(); if self.regs.read_gp(r) != 0 { self.regs.pc = (self.regs.pc as i64 + off as i64) as u32; } } // JNZ
                 0x07 => { let _r = self.read_u8(); let off = self.read_i16(); self.stack.push(self.regs.pc as i32); self.regs.pc = (self.regs.pc as i64 + off as i64) as u32; } // CALL
-                0x08 => { let d = self.read_u8(); let s = self.read_u8(); let r = self.regs.read_gp(d).wrapping_add(self.regs.read_gp(s)); self.regs.write_gp(d, r); self.regs.set_flags(r); } // IADD
-                0x09 => { let d = self.read_u8(); let s = self.read_u8(); let r = self.regs.read_gp(d).wrapping_sub(self.regs.read_gp(s)); self.regs.write_gp(d, r); self.regs.set_flags(r); } // ISUB
-                0x0A => { let d = self.read_u8(); let s = self.read_u8(); let r = self.regs.read_gp(d).wrapping_mul(self.regs.read_gp(s)); self.regs.write_gp(d, r); self.regs.set_flags(r); } // IMUL
-                0x0B => { let d = self.read_u8(); let s = self.read_u8(); if self.regs.read_gp(s) == 0 { return Err(FluxError::DivisionByZero); } let r = self.regs.read_gp(d) / self.regs.read_gp(s); self.regs.write_gp(d, r); self.regs.set_flags(r); } // IDIV
-                0x0C => { let d = self.read_u8(); let s = self.read_u8(); if self.regs.read_gp(s) == 0 { return Err(FluxError::DivisionByZero); } let r = self.regs.read_gp(d) % self.regs.read_gp(s); self.regs.write_gp(d, r); self.regs.set_flags(r); } // IMOD
-                0x0D => { let d = self.read_u8(); let r = -self.regs.read_gp(d); self.regs.write_gp(d, r); self.regs.set_flags(r); } // INEG
-                0x0E => { let d = self.read_u8(); let r = self.regs.read_gp(d).wrapping_add(1); self.regs.write_gp(d, r); self.regs.set_flags(r); } // INC
-                0x0F => { let d = self.read_u8(); let r = self.regs.read_gp(d).wrapping_sub(1); self.regs.write_gp(d, r); self.regs.set_flags(r); } // DEC
-                0x10 => { let d = self.read_u8(); let s = self.read_u8(); let r = self.regs.read_gp(d) & self.regs.read_gp(s); self.regs.write_gp(d, r); } // IAND
-                0x11 => { let d = self.read_u8(); let s = self.read_u8(); let r = self.regs.read_gp(d) | self.regs.read_gp(s); self.regs.write_gp(d, r); } // IOR
-                0x12 => { let d = self.read_u8(); let s = self.read_u8(); let r = self.regs.read_gp(d) ^ self.regs.read_gp(s); self.regs.write_gp(d, r); } // IXOR
-                0x13 => { let d = self.read_u8(); let r = !self.regs.read_gp(d); self.regs.write_gp(d, r); } // INOT
+                // 3-operand format: [op][rd][rs1][rs2] — matches Python/JS
+                0x08 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let r = self.regs.read_gp(a).wrapping_add(self.regs.read_gp(b)); self.regs.write_gp(d, r); self.regs.set_flags(r); } // IADD rd, rs1, rs2
+                0x09 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let r = self.regs.read_gp(a).wrapping_sub(self.regs.read_gp(b)); self.regs.write_gp(d, r); self.regs.set_flags(r); } // ISUB rd, rs1, rs2
+                0x0A => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let r = self.regs.read_gp(a).wrapping_mul(self.regs.read_gp(b)); self.regs.write_gp(d, r); self.regs.set_flags(r); } // IMUL rd, rs1, rs2
+                0x0B => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); if self.regs.read_gp(b) == 0 { return Err(FluxError::DivisionByZero); } let r = self.regs.read_gp(a) / self.regs.read_gp(b); self.regs.write_gp(d, r); self.regs.set_flags(r); } // IDIV rd, rs1, rs2
+                0x0C => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); if self.regs.read_gp(b) == 0 { return Err(FluxError::DivisionByZero); } let r = self.regs.read_gp(a) % self.regs.read_gp(b); self.regs.write_gp(d, r); self.regs.set_flags(r); } // IMOD rd, rs1, rs2
+                0x0D => { let d = self.read_u8(); let s = self.read_u8(); let r = -self.regs.read_gp(s); self.regs.write_gp(d, r); self.regs.set_flags(r); } // INEG rd, rs
+                0x0E => { let d = self.read_u8(); let r = self.regs.read_gp(d).wrapping_add(1); self.regs.write_gp(d, r); self.regs.set_flags(r); } // INC rd
+                0x0F => { let d = self.read_u8(); let r = self.regs.read_gp(d).wrapping_sub(1); self.regs.write_gp(d, r); self.regs.set_flags(r); } // DEC rd
+                0x10 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let r = self.regs.read_gp(a) & self.regs.read_gp(b); self.regs.write_gp(d, r); } // IAND rd, rs1, rs2
+                0x11 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let r = self.regs.read_gp(a) | self.regs.read_gp(b); self.regs.write_gp(d, r); } // IOR rd, rs1, rs2
+                0x12 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let r = self.regs.read_gp(a) ^ self.regs.read_gp(b); self.regs.write_gp(d, r); } // IXOR rd, rs1, rs2
+                0x13 => { let d = self.read_u8(); let s = self.read_u8(); let r = !self.regs.read_gp(s); self.regs.write_gp(d, r); } // INOT rd, rs
+                0x14 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let shift = (self.regs.read_gp(b) & 0x3F) as u32; let r = self.regs.read_gp(a).wrapping_shl(shift); self.regs.write_gp(d, r); self.regs.set_flags(r); } // ISHL rd, rs1, rs2
+                0x15 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let shift = (self.regs.read_gp(b) & 0x3F) as u32; let r = self.regs.read_gp(a).wrapping_shr(shift); self.regs.write_gp(d, r); self.regs.set_flags(r); } // ISHR rd, rs1, rs2
                 0x20 => { let r = self.read_u8(); self.stack.push(self.regs.read_gp(r)); } // PUSH
                 0x21 => { let r = self.read_u8(); if let Some(v) = self.stack.pop() { self.regs.write_gp(r, v); } } // POP
                 0x22 => { if let Some(&v) = self.stack.last() { self.stack.push(v); } } // DUP
                 0x28 => { let _r = self.read_u8(); let _p = self.read_u8(); if let Some(ret_pc) = self.stack.pop() { self.regs.pc = ret_pc as u32; } } // RET
                 0x2B => { let d = self.read_u8(); let imm = self.read_i16(); self.regs.write_gp(d, imm as i32); } // MOVI
                 0x2D => { let a = self.read_u8(); let b = self.read_u8(); let va = self.regs.read_gp(a); let vb = self.regs.read_gp(b); self.regs.flag_zero = va == vb; self.regs.flag_sign = va < vb; } // CMP
+                0x40 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let r = self.regs.read_fp(a) + self.regs.read_fp(b); self.regs.write_fp(d, r); } // FADD
+                0x41 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let r = self.regs.read_fp(a) - self.regs.read_fp(b); self.regs.write_fp(d, r); } // FSUB
+                0x42 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let r = self.regs.read_fp(a) * self.regs.read_fp(b); self.regs.write_fp(d, r); } // FMUL
+                0x43 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let divisor = self.regs.read_fp(b); if divisor == 0.0 { return Err(FluxError::DivisionByZero); } let r = self.regs.read_fp(a) / divisor; self.regs.write_fp(d, r); } // FDIV
+                0x60 => { /* TELL: A2A stub — skip variable data */ let _ = self.read_u8(); } // TELL (stub)
+                0x61 => { /* ASK: A2A stub */ let _ = self.read_u8(); } // ASK (stub)
+                0x62 => { /* DELEGATE: A2A stub */ let _ = self.read_u8(); } // DELEGATE (stub)
+                0x66 => { /* BROADCAST: A2A stub */ let _ = self.read_u8(); } // BROADCAST (stub)
                 0x80 => { self.halted = true; } // HALT
                 0x81 => {} // YIELD
                 _ => return Err(FluxError::InvalidOpcode(op_byte)),

@@ -8,8 +8,8 @@
 //! ## Quick Start
 //!
 //! ```
-//! use flux_core::vm::Interpreter;
-//! use flux_core::bytecode::opcodes::Op;
+//! use fluxvm::vm::Interpreter;
+//! use fluxvm::bytecode::opcodes::Op;
 //!
 //! // Build bytecode: MOVI R0, 42; HALT
 //! let bytecode = vec![Op::MOVI as u8, 0, 42, 0, Op::HALT as u8];

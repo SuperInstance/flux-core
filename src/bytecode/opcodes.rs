@@ -28,6 +28,7 @@ impl Op {
     pub fn from_byte(byte: u8) -> Option<Self> {
         match byte {
             0x00 => Some(Self::NOP), 0x01 => Some(Self::MOV),
+            0x02 => Some(Self::LOAD), 0x03 => Some(Self::STORE),
             0x04 => Some(Self::JMP), 0x05 => Some(Self::JZ), 0x06 => Some(Self::JNZ),
             0x07 => Some(Self::CALL), 0x08 => Some(Self::IADD), 0x09 => Some(Self::ISUB),
             0x0A => Some(Self::IMUL), 0x0B => Some(Self::IDIV), 0x0C => Some(Self::IMOD),
