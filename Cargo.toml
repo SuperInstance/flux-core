@@ -1,5 +1,5 @@
 [package]
-name = "flux-core"
+name = "fluxvm"
 version = "0.1.0"
 edition = "2021"
 authors = ["SuperInstance (DiGennaro et al.)"]
@@ -7,7 +7,7 @@ description = "FLUX bytecode runtime — Fluid Language Universal eXecution: a z
 license = "MIT"
 repository = "https://github.com/SuperInstance/flux-core"
 homepage = "https://github.com/SuperInstance/flux-core"
-documentation = "https://docs.rs/flux-core"
+documentation = "https://docs.rs/fluxvm"
 readme = "README.md"
 keywords = ["vm", "bytecode", "interpreter", "agent", "a2a"]
 categories = ["virtualization", "emulators", "parser-implementations"]
