@@ -8,6 +8,12 @@ pub struct Assembler {
     fixups: Vec<(usize, usize, String)>, // (patch_pos, instr_end, label)
 }
 
+impl Default for Assembler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Assembler {
     pub fn new() -> Self {
         Self {

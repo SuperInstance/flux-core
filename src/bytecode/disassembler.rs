@@ -37,7 +37,7 @@ impl Disassembler {
                         let imm = i16::from_le_bytes([bytecode[pc], bytecode[pc+1]]);
                         pc += 2;
                         (format!("MOVI R{}, {}", r, imm), 4)
-                    } else { (format!("MOVI (truncated)"), 1) }
+                    } else { ("MOVI (truncated)".to_string(), 1) }
                 }
                 Op::IADD | Op::ISUB | Op::IMUL | Op::IDIV | Op::IMOD |
                 Op::IAND | Op::IOR | Op::IXOR | Op::ISHL | Op::ISHR => {

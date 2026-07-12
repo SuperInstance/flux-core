@@ -1,5 +1,4 @@
 use crate::vm::Interpreter;
-use crate::bytecode::assembler::Assembler;
 use crate::a2a::messages::{A2AMessage, MessageType};
 use std::collections::HashMap;
 
@@ -55,6 +54,12 @@ impl Agent {
 /// A swarm of agents that coordinate via A2A protocol.
 pub struct Swarm {
     pub agents: HashMap<String, Agent>,
+}
+
+impl Default for Swarm {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Swarm {

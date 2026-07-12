@@ -2,12 +2,16 @@
 name = "flux-core"
 version = "0.1.0"
 edition = "2021"
-description = "FLUX bytecode runtime — Fluid Language Universal eXecution"
-license = "MIT"
 authors = ["SuperInstance (DiGennaro et al.)"]
+description = "FLUX bytecode runtime — Fluid Language Universal eXecution: a zero-dependency register-based VM with assembler, disassembler, A2A agent protocol, and vocabulary system"
+license = "MIT"
 repository = "https://github.com/SuperInstance/flux-core"
-keywords = ["vm", "bytecode", "agent", "flux", "a2a"]
-categories = ["virtualization", "embedded", "parser-implementations"]
+homepage = "https://github.com/SuperInstance/flux-core"
+documentation = "https://docs.rs/flux-core"
+readme = "README.md"
+keywords = ["vm", "bytecode", "interpreter", "agent", "a2a"]
+categories = ["virtualization", "emulators", "parser-implementations"]
+exclude = ["/flux-core", "/message-in-a-bottle", "/for-fleet", "/benches"]
 
 [dependencies]
 regex = "1"
@@ -18,3 +22,8 @@ criterion = "0.5"
 [[bench]]
 name = "vm_benchmark"
 harness = false
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
