@@ -1,10 +1,48 @@
-# ⚡ FLUX — Bytecode VM for the Shell
+# ⚡ FLUX — Rust Bytecode VM
+
+> **FLUX — Fluid Language Universal eXecution**
+> A register-based bytecode VM for deterministic agent computation.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![crates.io](https://img.shields.io/crates/v/fluxvm.svg)](https://crates.io/crates/fluxvm)
 
 FLUX is the bytecode VM that runs **inside** the shell. Not the shell itself — the mechanism. It executes deterministic programs so agents don't need to agree on what "add R1, R2" means.
 
 Construct is the shell. FLUX is the muscle that moves within it. When an agent needs to compute something, it doesn't reach for Python or Bash — it reaches for FLUX. A compact, auditable, register-based VM that does exactly one thing: execute bytecode predictably, every time, on every agent.
 
 **FLUX = γ** — the fixed, deterministic, mathematical layer. The instruction set that never surprises. The contract that both sides can verify.
+
+---
+
+## Install
+
+```bash
+cargo add fluxvm
+```
+
+## Quick Start
+
+### Bytecode Assembly & Execution
+
+```rust
+use flux_core::bytecode::assembler::Assembler;
+use flux_core::vm::Interpreter;
+
+let bytecode = Assembler::assemble("MOVI R0, 42\nHALT").unwrap();
+let mut vm = Interpreter::new(&bytecode);
+vm.execute().unwrap();
+assert_eq!(vm.read_gp(0), 42);
+```
+
+### Natural Language → Bytecode
+
+```rust
+use flux_core::vocabulary::Interpreter;
+
+let interp = Interpreter::with_builtins();
+assert_eq!(interp.execute("compute 6 * 7").unwrap(), 42);
+assert_eq!(interp.execute("factorial of 5").unwrap(), 120);
+```
 
 ---
 
@@ -106,32 +144,6 @@ The shell (Construct) holds both. γ provides the floor. η provides the ceiling
 
 ---
 
-## Quick Start
-
-### Bytecode Assembly & Execution
-
-```rust
-use flux_core::bytecode::assembler::Assembler;
-use flux_core::vm::Interpreter;
-
-let bytecode = Assembler::assemble("MOVI R0, 42\nHALT").unwrap();
-let mut vm = Interpreter::new(&bytecode);
-vm.execute().unwrap();
-assert_eq!(vm.read_gp(0), 42);
-```
-
-### Natural Language → Bytecode
-
-```rust
-use flux_core::vocabulary::Interpreter;
-
-let interp = Interpreter::with_builtins();
-assert_eq!(interp.execute("compute 6 * 7").unwrap(), 42);
-assert_eq!(interp.execute("factorial of 5").unwrap(), 120);
-```
-
----
-
 ## API
 
 | Module | Key Types | Purpose |
@@ -141,6 +153,36 @@ assert_eq!(interp.execute("factorial of 5").unwrap(), 120);
 | `vocabulary` | `VocabEntry`, `Vocabulary`, `Interpreter` | NL pattern → assembly |
 | `a2a` | `A2AMessage`, `Agent`, `Swarm` | Agent protocol |
 | `error` | `FluxError` | All error variants |
+
+---
+
+## 📦 Related Packages
+
+FLUX is implemented across multiple languages — same bytecode, different shells:
+
+| Package | Language | Registry | Install |
+|---------|----------|----------|---------|
+| **[flux-vm](https://pypi.org/project/flux-vm/)** | Python | PyPI | `pip install flux-vm` |
+| **[fluxvm](https://crates.io/crates/fluxvm)** | Rust | crates.io | `cargo add fluxvm` |
+| **[flux-js](https://www.npmjs.com/package/flux-js)** | JavaScript | npm | `npm install flux-js` |
+| **[flux-compiler](https://github.com/SuperInstance/flux-compiler)** | Rust/Python | GitHub | `cargo install flux-compiler` |
+
+Additional implementations: [C](https://github.com/SuperInstance/flux-runtime-c) · [Zig](https://github.com/SuperInstance/flux-zig) · [Go](https://github.com/SuperInstance/flux-swarm) · [Java](https://github.com/SuperInstance/flux-java) · [WASM](https://github.com/SuperInstance/flux-wasm) · [CUDA](https://github.com/SuperInstance/flux-cuda)
+
+## 🌐 Ecosystem
+
+FLUX is part of a broader research ecosystem exploring agent-first computation:
+
+| Project | Description |
+|---------|-------------|
+| [PLATO Engine Block](https://github.com/SuperInstance/plato-engine-block) | Constraint engine powering FLUX verification |
+| [Constraint-Theory-Core](https://github.com/SuperInstance/Constraint-Theory) | Mathematical foundations for constraint-based computation |
+| [AI-Writings](https://github.com/SuperInstance/AI-Writings) | Philosophy, essays, and design rationale behind FLUX |
+| [Captain's Log](https://github.com/SuperInstance/captains-log) | Oracle1 growth diary and agent dojo curriculum |
+| [Iron-to-Iron](https://github.com/SuperInstance/iron-to-iron) | I2I protocol — agents communicate through git commits |
+| [flux-research](https://github.com/SuperInstance/flux-research) | 40K words: compiler taxonomy, ISA v2, agent-first design |
+
+📖 **[Full package index →](https://github.com/SuperInstance/flux/blob/main/PACKAGES.md)**
 
 ---
 
@@ -171,4 +213,4 @@ MIT
 
 ---
 
-> *The crab inherits the shell.*
+> *The crab inherits the shell.* 🦀
