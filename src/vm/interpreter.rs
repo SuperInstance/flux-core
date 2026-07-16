@@ -122,16 +122,16 @@ impl<'a> Interpreter<'a> {
                 0x0D => { let d = self.read_u8(); let s = self.read_u8(); let r = -self.regs.read_gp(s); self.regs.write_gp(d, r); self.regs.set_flags(r); } // INEG rd, rs
                 0x0E => { let d = self.read_u8(); let r = self.regs.read_gp(d).wrapping_add(1); self.regs.write_gp(d, r); self.regs.set_flags(r); } // INC rd
                 0x0F => { let d = self.read_u8(); let r = self.regs.read_gp(d).wrapping_sub(1); self.regs.write_gp(d, r); self.regs.set_flags(r); } // DEC rd
-                0x10 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let r = self.regs.read_gp(a) & self.regs.read_gp(b); self.regs.write_gp(d, r); } // IAND rd, rs1, rs2
-                0x11 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let r = self.regs.read_gp(a) | self.regs.read_gp(b); self.regs.write_gp(d, r); } // IOR rd, rs1, rs2
-                0x12 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let r = self.regs.read_gp(a) ^ self.regs.read_gp(b); self.regs.write_gp(d, r); } // IXOR rd, rs1, rs2
-                0x13 => { let d = self.read_u8(); let s = self.read_u8(); let r = !self.regs.read_gp(s); self.regs.write_gp(d, r); } // INOT rd, rs
+                0x10 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let r = self.regs.read_gp(a) & self.regs.read_gp(b); self.regs.write_gp(d, r); self.regs.set_flags(r); } // IAND rd, rs1, rs2 (sets flags per FLUX_BYTECODE_SPEC.md L63)
+                0x11 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let r = self.regs.read_gp(a) | self.regs.read_gp(b); self.regs.write_gp(d, r); self.regs.set_flags(r); } // IOR rd, rs1, rs2 (sets flags per spec L63)
+                0x12 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let r = self.regs.read_gp(a) ^ self.regs.read_gp(b); self.regs.write_gp(d, r); self.regs.set_flags(r); } // IXOR rd, rs1, rs2 (sets flags per spec L63)
+                0x13 => { let d = self.read_u8(); let s = self.read_u8(); let r = !self.regs.read_gp(s); self.regs.write_gp(d, r); self.regs.set_flags(r); } // INOT rd, rs (sets flags per spec L63)
                 0x14 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let shift = (self.regs.read_gp(b) & 0x3F) as u32; let r = self.regs.read_gp(a).wrapping_shl(shift); self.regs.write_gp(d, r); self.regs.set_flags(r); } // ISHL rd, rs1, rs2
                 0x15 => { let d = self.read_u8(); let a = self.read_u8(); let b = self.read_u8(); let shift = (self.regs.read_gp(b) & 0x3F) as u32; let r = self.regs.read_gp(a).wrapping_shr(shift); self.regs.write_gp(d, r); self.regs.set_flags(r); } // ISHR rd, rs1, rs2
                 0x20 => { let r = self.read_u8(); self.stack.push(self.regs.read_gp(r)); } // PUSH
-                0x21 => { let r = self.read_u8(); if let Some(v) = self.stack.pop() { self.regs.write_gp(r, v); } } // POP
-                0x22 => { if let Some(&v) = self.stack.last() { self.stack.push(v); } } // DUP
-                0x28 => { let _r = self.read_u8(); let _p = self.read_u8(); if let Some(ret_pc) = self.stack.pop() { self.regs.pc = ret_pc as u32; } } // RET
+                0x21 => { let r = self.read_u8(); match self.stack.pop() { Some(v) => self.regs.write_gp(r, v), None => return Err(FluxError::StackUnderflow), } } // POP (errors on empty stack — v0.1.1 audit fix)
+                0x22 => { match self.stack.last() { Some(&v) => self.stack.push(v), None => return Err(FluxError::StackUnderflow), } } // DUP (errors on empty stack — v0.1.1 audit fix)
+                0x28 => { let _r = self.read_u8(); let _p = self.read_u8(); match self.stack.pop() { Some(ret_pc) => self.regs.pc = ret_pc as u32, None => return Err(FluxError::StackUnderflow), } } // RET (errors on empty stack — v0.1.1 audit fix)
                 0x2B => { let d = self.read_u8(); let imm = self.read_i16(); self.regs.write_gp(d, imm as i32); } // MOVI
                 0x2D => { let a = self.read_u8(); let b = self.read_u8(); let va = self.regs.read_gp(a); let vb = self.regs.read_gp(b); self.regs.flag_zero = va == vb; self.regs.flag_sign = va < vb; } // CMP
                 0x2E => { let _r = self.read_u8(); let off = self.read_i16(); if self.regs.flag_zero { self.regs.pc = (self.regs.pc as i64 + off as i64) as u32; } } // JE

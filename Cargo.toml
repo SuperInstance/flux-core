@@ -1,6 +1,6 @@
 [package]
 name = "fluxvm"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["SuperInstance (DiGennaro et al.)"]
 description = "FLUX bytecode runtime — Fluid Language Universal eXecution: a zero-dependency register-based VM with assembler, disassembler, A2A agent protocol, and vocabulary system"
