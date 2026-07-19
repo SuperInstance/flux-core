@@ -58,7 +58,7 @@ fn main() {
                 println!("FLAG_SIGN: {}", vm.regs.flag_sign);
                 println!("CYCLES: {}", cycles);
             } else {
-                eprintln!("Executed {} cycles", cycles);
+                println!("Executed {} cycles", cycles);
             }
         }
         Err(e) => {

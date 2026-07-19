@@ -135,7 +135,7 @@ impl<'a> Interpreter<'a> {
         }
 
         if self.cycle_count >= self.max_cycles {
-            return Err(FluxError::CycleBudgetExceeded(self.max_cycles));
+            return Err(FluxError::CycleBudgetExceeded(self.cycle_count));
         }
 
         Ok(self.cycle_count)
