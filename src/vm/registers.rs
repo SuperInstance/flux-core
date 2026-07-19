@@ -25,14 +25,29 @@ impl RegisterFile {
 
     #[inline]
     pub fn read_gp(&self, idx: u8) -> i32 {
-        *self.gp.get(idx as usize).unwrap_or(&0)
+        let i = idx as usize;
+        if i < NUM_GP { self.gp[i] } else { 0 }
     }
 
     #[inline]
     pub fn write_gp(&mut self, idx: u8, val: i32) {
-        if (idx as usize) < NUM_GP {
-            self.gp[idx as usize] = val;
+        let i = idx as usize;
+        if i < NUM_GP {
+            self.gp[i] = val;
         }
+        // Silently ignore out-of-bounds — matches VM spec (clamp to 0)
+    }
+
+    #[inline]
+    pub fn read_gp_checked(&self, idx: u8) -> Result<i32, u8> {
+        let i = idx as usize;
+        if i < NUM_GP { Ok(self.gp[i]) } else { Err(idx) }
+    }
+
+    #[inline]
+    pub fn write_gp_checked(&mut self, idx: u8, val: i32) -> Result<(), u8> {
+        let i = idx as usize;
+        if i < NUM_GP { self.gp[i] = val; Ok(()) } else { Err(idx) }
     }
 
     #[inline]
