@@ -63,6 +63,13 @@ impl<'a> Interpreter<'a> {
         }
     }
 
+    #[inline]
+    fn jump_relative(&mut self, off: i16) {
+        let new_pc = (self.regs.pc as i64).saturating_add(off as i64);
+        let max = self.bytecode.len() as i64;
+        self.regs.pc = new_pc.clamp(0, max) as u32;
+    }
+
     pub fn execute(&mut self) -> Result<u64, FluxError> {
         self.halted = false;
         self.cycle_count = 0;
@@ -82,10 +89,10 @@ impl<'a> Interpreter<'a> {
                 0x02 => { let d = self.read_u8(); let s = self.read_u8(); let addr = self.regs.read_gp(s) as usize; if addr + 4 > self.memory.len() { return Err(FluxError::InvalidOpcode(0x02)); } let val = i32::from_le_bytes([self.memory[addr], self.memory[addr+1], self.memory[addr+2], self.memory[addr+3]]); self.regs.write_gp(d, val); }
                 // Format C: STORE rd(val), rs(addr) — memory[rs] = rd
                 0x03 => { let d = self.read_u8(); let s = self.read_u8(); let addr = self.regs.read_gp(s) as usize; let val = self.regs.read_gp(d); if addr + 4 > self.memory.len() { return Err(FluxError::InvalidOpcode(0x03)); } let bytes = val.to_le_bytes(); self.memory[addr..addr+4].copy_from_slice(&bytes); }
-                0x04 => { let _r = self.read_u8(); let off = self.read_i16(); self.regs.pc = (self.regs.pc as i64 + off as i64) as u32; }
-                0x05 => { let r = self.read_u8(); let off = self.read_i16(); if self.regs.read_gp(r) == 0 { self.regs.pc = (self.regs.pc as i64 + off as i64) as u32; } }
-                0x06 => { let r = self.read_u8(); let off = self.read_i16(); if self.regs.read_gp(r) != 0 { self.regs.pc = (self.regs.pc as i64 + off as i64) as u32; } }
-                0x07 => { let _r = self.read_u8(); let off = self.read_i16(); self.stack.push(self.regs.pc as i32); self.regs.pc = (self.regs.pc as i64 + off as i64) as u32; }
+                0x04 => { let _r = self.read_u8(); let off = self.read_i16(); self.jump_relative(off); }
+                0x05 => { let r = self.read_u8(); let off = self.read_i16(); if self.regs.read_gp(r) == 0 { self.jump_relative(off); } }
+                0x06 => { let r = self.read_u8(); let off = self.read_i16(); if self.regs.read_gp(r) != 0 { self.jump_relative(off); } }
+                0x07 => { let _r = self.read_u8(); let off = self.read_i16(); self.stack.push(self.regs.pc as i32); self.jump_relative(off); }
                 // Format E: [opcode][rd][rs1][rs2] — 3-operand
                 0x08 => { let d = self.read_u8(); let s1 = self.read_u8(); let s2 = self.read_u8(); let r = self.regs.read_gp(s1).wrapping_add(self.regs.read_gp(s2)); self.regs.write_gp(d, r); self.regs.set_flags(r); }
                 0x09 => { let d = self.read_u8(); let s1 = self.read_u8(); let s2 = self.read_u8(); let r = self.regs.read_gp(s1).wrapping_sub(self.regs.read_gp(s2)); self.regs.write_gp(d, r); self.regs.set_flags(r); }
@@ -110,8 +117,8 @@ impl<'a> Interpreter<'a> {
                 0x28 => { let _r = self.read_u8(); let _p = self.read_u8(); if let Some(ret_pc) = self.stack.pop() { self.regs.pc = ret_pc as u32; } }
                 0x2B => { let d = self.read_u8(); let imm = self.read_i16(); self.regs.write_gp(d, imm as i32); }
                 0x2D => { let a = self.read_u8(); let b = self.read_u8(); let va = self.regs.read_gp(a); let vb = self.regs.read_gp(b); self.regs.flag_zero = va == vb; self.regs.flag_sign = va < vb; }
-                0x2E => { let _r = self.read_u8(); let off = self.read_i16(); if self.regs.flag_zero { self.regs.pc = (self.regs.pc as i64 + off as i64) as u32; } }
-                0x2F => { let _r = self.read_u8(); let off = self.read_i16(); if !self.regs.flag_zero { self.regs.pc = (self.regs.pc as i64 + off as i64) as u32; } }
+                0x2E => { let _r = self.read_u8(); let off = self.read_i16(); if self.regs.flag_zero { self.jump_relative(off); } }
+                0x2F => { let _r = self.read_u8(); let off = self.read_i16(); if !self.regs.flag_zero { self.jump_relative(off); } }
                 // Format E: FADD/FSUB/FMUL rd, rs1, rs2 (3-operand)
                 0x40 => { let d = self.read_u8(); let s1 = self.read_u8(); let s2 = self.read_u8(); let a = f32::from_bits(self.regs.read_gp(s1) as u32); let b = f32::from_bits(self.regs.read_gp(s2) as u32); self.regs.write_gp(d, f32::to_bits(a + b) as i32); }
                 0x41 => { let d = self.read_u8(); let s1 = self.read_u8(); let s2 = self.read_u8(); let a = f32::from_bits(self.regs.read_gp(s1) as u32); let b = f32::from_bits(self.regs.read_gp(s2) as u32); self.regs.write_gp(d, f32::to_bits(a - b) as i32); }
