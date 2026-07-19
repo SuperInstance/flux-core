@@ -112,10 +112,12 @@ impl<'a> Interpreter<'a> {
                 0x2D => { let a = self.read_u8(); let b = self.read_u8(); let va = self.regs.read_gp(a); let vb = self.regs.read_gp(b); self.regs.flag_zero = va == vb; self.regs.flag_sign = va < vb; }
                 0x2E => { let _r = self.read_u8(); let off = self.read_i16(); if self.regs.flag_zero { self.regs.pc = (self.regs.pc as i64 + off as i64) as u32; } }
                 0x2F => { let _r = self.read_u8(); let off = self.read_i16(); if !self.regs.flag_zero { self.regs.pc = (self.regs.pc as i64 + off as i64) as u32; } }
-                0x40 => { let d = self.read_u8(); let s = self.read_u8(); let a = f32::from_bits(self.regs.read_gp(d) as u32); let b = f32::from_bits(self.regs.read_gp(s) as u32); self.regs.write_gp(d, f32::to_bits(a + b) as i32); }
-                0x41 => { let d = self.read_u8(); let s = self.read_u8(); let a = f32::from_bits(self.regs.read_gp(d) as u32); let b = f32::from_bits(self.regs.read_gp(s) as u32); self.regs.write_gp(d, f32::to_bits(a - b) as i32); }
-                0x42 => { let d = self.read_u8(); let s = self.read_u8(); let a = f32::from_bits(self.regs.read_gp(d) as u32); let b = f32::from_bits(self.regs.read_gp(s) as u32); self.regs.write_gp(d, f32::to_bits(a * b) as i32); }
-                0x43 => { let d = self.read_u8(); let s = self.read_u8(); let a = f32::from_bits(self.regs.read_gp(d) as u32); let b = f32::from_bits(self.regs.read_gp(s) as u32); if b == 0.0 { return Err(FluxError::DivisionByZero); } self.regs.write_gp(d, f32::to_bits(a / b) as i32); }
+                // Format E: FADD/FSUB/FMUL rd, rs1, rs2 (3-operand)
+                0x40 => { let d = self.read_u8(); let s1 = self.read_u8(); let s2 = self.read_u8(); let a = f32::from_bits(self.regs.read_gp(s1) as u32); let b = f32::from_bits(self.regs.read_gp(s2) as u32); self.regs.write_gp(d, f32::to_bits(a + b) as i32); }
+                0x41 => { let d = self.read_u8(); let s1 = self.read_u8(); let s2 = self.read_u8(); let a = f32::from_bits(self.regs.read_gp(s1) as u32); let b = f32::from_bits(self.regs.read_gp(s2) as u32); self.regs.write_gp(d, f32::to_bits(a - b) as i32); }
+                0x42 => { let d = self.read_u8(); let s1 = self.read_u8(); let s2 = self.read_u8(); let a = f32::from_bits(self.regs.read_gp(s1) as u32); let b = f32::from_bits(self.regs.read_gp(s2) as u32); self.regs.write_gp(d, f32::to_bits(a * b) as i32); }
+                // Format E: FDIV rd, rs1, rs2 (3-operand, catches -0.0)
+                0x43 => { let d = self.read_u8(); let s1 = self.read_u8(); let s2 = self.read_u8(); let a = f32::from_bits(self.regs.read_gp(s1) as u32); let b = f32::from_bits(self.regs.read_gp(s2) as u32); if b == 0.0 || b == -0.0 { return Err(FluxError::DivisionByZero); } self.regs.write_gp(d, f32::to_bits(a / b) as i32); }
                 0x80 => { self.halted = true; }
                 0x81 => {}
                 // Tensor operations (A2 agent protocol, opt-in via feature)
