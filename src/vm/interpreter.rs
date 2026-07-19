@@ -3,6 +3,7 @@ use crate::error::FluxError;
 use super::registers::RegisterFile;
 
 const DEFAULT_MAX_CYCLES: u64 = 10_000_000;
+const MEMORY_SIZE: usize = 65536; // 64 KB linear memory for LOAD/STORE
 
 #[derive(Debug)]
 pub struct Interpreter<'a> {
@@ -12,6 +13,7 @@ pub struct Interpreter<'a> {
     pub cycle_count: u64,
     max_cycles: u64,
     pub stack: Vec<i32>,
+    pub memory: Vec<u8>, // 64 KB linear memory for LOAD/STORE
     #[cfg(feature = "tensor")]
     pub tensor_scratch: [u8; 4096],
 }
@@ -25,6 +27,7 @@ impl<'a> Interpreter<'a> {
             cycle_count: 0,
             max_cycles: DEFAULT_MAX_CYCLES,
             stack: Vec::with_capacity(1024),
+            memory: vec![0u8; MEMORY_SIZE],
             #[cfg(feature = "tensor")]
             tensor_scratch: [0u8; 4096],
         }
@@ -75,6 +78,10 @@ impl<'a> Interpreter<'a> {
             match op_byte {
                 0x00 => {}
                 0x01 => { let d = self.read_u8(); let s = self.read_u8(); self.regs.write_gp(d, self.regs.read_gp(s)); }
+                // Format C: LOAD rd, rs(addr) — rd = memory[rs]
+                0x02 => { let d = self.read_u8(); let s = self.read_u8(); let addr = self.regs.read_gp(s) as usize; if addr + 4 > self.memory.len() { return Err(FluxError::InvalidOpcode(0x02)); } let val = i32::from_le_bytes([self.memory[addr], self.memory[addr+1], self.memory[addr+2], self.memory[addr+3]]); self.regs.write_gp(d, val); }
+                // Format C: STORE rd(val), rs(addr) — memory[rs] = rd
+                0x03 => { let d = self.read_u8(); let s = self.read_u8(); let addr = self.regs.read_gp(s) as usize; let val = self.regs.read_gp(d); if addr + 4 > self.memory.len() { return Err(FluxError::InvalidOpcode(0x03)); } let bytes = val.to_le_bytes(); self.memory[addr..addr+4].copy_from_slice(&bytes); }
                 0x04 => { let _r = self.read_u8(); let off = self.read_i16(); self.regs.pc = (self.regs.pc as i64 + off as i64) as u32; }
                 0x05 => { let r = self.read_u8(); let off = self.read_i16(); if self.regs.read_gp(r) == 0 { self.regs.pc = (self.regs.pc as i64 + off as i64) as u32; } }
                 0x06 => { let r = self.read_u8(); let off = self.read_i16(); if self.regs.read_gp(r) != 0 { self.regs.pc = (self.regs.pc as i64 + off as i64) as u32; } }
@@ -93,8 +100,12 @@ impl<'a> Interpreter<'a> {
                 0x11 => { let d = self.read_u8(); let s1 = self.read_u8(); let s2 = self.read_u8(); let r = self.regs.read_gp(s1) | self.regs.read_gp(s2); self.regs.write_gp(d, r); }
                 0x12 => { let d = self.read_u8(); let s1 = self.read_u8(); let s2 = self.read_u8(); let r = self.regs.read_gp(s1) ^ self.regs.read_gp(s2); self.regs.write_gp(d, r); }
                 0x13 => { let d = self.read_u8(); let s = self.read_u8(); let r = !self.regs.read_gp(s); self.regs.write_gp(d, r); }
+                // Format E: ISHL rd, rs1, rs2 — rd = rs1 << rs2
+                0x14 => { let d = self.read_u8(); let s1 = self.read_u8(); let s2 = self.read_u8(); let r = self.regs.read_gp(s1).wrapping_shl(self.regs.read_gp(s2) as u32); self.regs.write_gp(d, r); self.regs.set_flags(r); }
+                // Format E: ISHR rd, rs1, rs2 — rd = rs1 >> rs2 (arithmetic)
+                0x15 => { let d = self.read_u8(); let s1 = self.read_u8(); let s2 = self.read_u8(); let r = self.regs.read_gp(s1).wrapping_shr(self.regs.read_gp(s2) as u32); self.regs.write_gp(d, r); self.regs.set_flags(r); }
                 0x20 => { let r = self.read_u8(); self.stack.push(self.regs.read_gp(r)); }
-                0x21 => { let r = self.read_u8(); if let Some(v) = self.stack.pop() { self.regs.write_gp(r, v); } }
+                0x21 => { let r = self.read_u8(); match self.stack.pop() { Some(v) => self.regs.write_gp(r, v), None => return Err(FluxError::StackUnderflow), } }
                 0x22 => { if let Some(&v) = self.stack.last() { self.stack.push(v); } }
                 0x28 => { let _r = self.read_u8(); let _p = self.read_u8(); if let Some(ret_pc) = self.stack.pop() { self.regs.pc = ret_pc as u32; } }
                 0x2B => { let d = self.read_u8(); let imm = self.read_i16(); self.regs.write_gp(d, imm as i32); }
